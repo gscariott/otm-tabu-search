@@ -1,6 +1,6 @@
 using JuMP, GLPK, Random
 
-open("instancias-problema1/instance_50_75.dat") do f
+open("instancias-problema1/instance_50_250.dat") do f
   global q = readline(f)
   global n = parse(Int64, first(split(q, " ")))
   global m = parse(Int64, last(split(q, " ")))
@@ -8,8 +8,6 @@ open("instancias-problema1/instance_50_75.dat") do f
   global arestas = Vector{Int64}(undef, m)
   global u = Vector{Int64}(undef, m)
   global v = Vector{Int64}(undef, m)
-  # global X = fill(0, m)
-  # global Y = fill(0, n)
 
   for i in 1:n
     q = readline(f)
@@ -20,10 +18,7 @@ open("instancias-problema1/instance_50_75.dat") do f
     q = readline(f)
     arestas[i] = parse(Int64, last(split(q, " ")))
     u[i] = parse(Int64, first(split(q, " ")))
-    #Y[u[i]] += 1
-    v[i] = parse(Int64, split(q, " ")[2])
-    #Y[v[i]] += 1
-    
+    v[i] = parse(Int64, split(q, " ")[2]) 
   end
 end
    
@@ -64,7 +59,6 @@ function solutionValue(sol)
   valores = Int64(0)
   custos = Int64(0)
   Y = fill(0, m)
-  
   for i in 1:m
     if sol[i] > 0
       valores +=  arestas[i]
@@ -72,13 +66,14 @@ function solutionValue(sol)
       Y[v[i]] += 1
     end
   end
-  
-  for i in 1:m
-    if Y[i] > 0
+  # @show valores
+  # @show Y
+  for i in 1:n
+    if Y[i] >= 1
       custos +=  vertices[i]
     end
   end
-  
+  # @show custos
   return valores - custos # devolver o Y tambem
 end
 
@@ -95,27 +90,36 @@ function neighborValue(bit, val)
   return solutionValue(sol)
 end
 
-function bestNeighbor(sol, value)
+function bestNeighbor(sol, global_value, tabuList)
   # calcNeighborhoodSol em todas as sol da neighborhood e devolve a melhor sol e o move que gerou essa sol
-  best_value = 0
+  local_best_value = -Inf
   best_move = 1
   best_sol = sol
   curr_value = 0
   curr_sol = sol
-
+  # sleep(3)
   for i in 1:m
-    curr_sol = flip(curr_sol, i)
-    curr_value = solutionValue(sol) # neighborValue(i, value)
-    if best_value < curr_value
-      best_value = curr_value
-      best_move = i
-      # best_sol = curr_sol
+    curr_sol = flip(sol, i)
+    curr_value = solutionValue(curr_sol) # neighborValue(i, value)
+    
+    # @show curr_value
+    if tabuList[i] == 0 || curr_value > global_value
+      if local_best_value < curr_value
+        # @show "possivel sol", curr_value, curr_sol
+        local_best_value = curr_value
+        best_move = i
+        # @show local_best_value
+        # @show best_move
+        # best_sol = curr_sol
+      end
     end
-    flip(curr_sol, i)
+    flip(sol, i)
   end
-  best_sol = flip(curr_sol, best_move)
-  
-  return best_sol, best_value, best_move
+  # best_move = best_move == 0 ? 1 : best_move
+  best_sol = flip(sol, best_move)
+  # @show "best sol final", best_sol
+  # @show best_value, best_move
+  return best_sol, local_best_value, best_move
 end
 # updateTabu(tabuList, move, moveStack)
 # flip tabuList[move] + (push no top da pilha)
@@ -131,12 +135,12 @@ end
 # calcX
 
 #parametros: maximumIter = m/3, tabuSize = m/4, initialSol = [1, 0, 0, 1, 1]
-function tabu()
+function tabu(ter)
   tabuList = fill(0, m)
-  tabuSize = floor(Int64,m/4)
+  tabuSize = floor(Int64, ter)
   moveStack = fill(1, tabuSize)
   # move = 13
-  maximumIter = floor(Int64,m/3)
+  maximumIter = floor(Int64,m/2)
   # initialSol = [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1]
   initialSol = fill(0,m)
   # tabuList = fill(0, tabuSize)
@@ -149,30 +153,36 @@ function tabu()
 
   while iterCount - bestIter <= maximumIter
     # @show s
+    
     iterCount += 1
-    @show tabuList
+    # @show tabuList
     # @show moveStack
-    s_line, s_line_value, s_line_move = bestNeighbor(s, s_value)
-
-    if tabuList[s_line_move] == 0# || s_line_value > bestValue
-      @show "NAO É TABU"
-      s = s_line
-      s_value = s_line_value
-    end
-    if s_value > bestValue
+    s_line, s_line_value, s_line_move = bestNeighbor(s, bestValue, tabuList)
+    # @show best
+  
+    # if tabuList[s_line_move] == 0 || s_line_value > bestValue
+      # @show "entrou"
+    # end
+    s = s_line
+    s_value = s_line_value
+    # @show s_value, solutionValue(s)
+    if bestValue < s_value
       s_ast = s
       bestIter = iterCount
       bestValue = s_value
     end
+    # @show s_value, iterCount
     updateTabu(tabuList, s_line_move, moveStack)
   end
 
-  @show s_ast
+  # @show s_ast, solutionValue(s_ast)
+  @show tabuSize
   @show bestValue
 end
-
-tabu()
-
+for i in 1:75
+  tabu(i)
+end
+# tabu(floor(sqrt(m)))
 # optimize!(model)
 # if termination_status(model) == MOI.OPTIMAL
 #   println("Solução ótima encontrada")
