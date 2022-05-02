@@ -22,14 +22,6 @@ open("instancias-problema1/instance_1000_10000.dat") do file
   end
 end
 
-function setOnes(s_vertex)
-  for i in 1:length(s_vertex)
-    if s_vertex[i] > 0
-      s_vertex[i] = 1
-    end
-  end
-end
-
 function flip(s, index)
   s[index] = s[index] == 1 ? 0 : 1
 
@@ -152,7 +144,6 @@ function tabuSearch(maximum_iter, s, tabu_size)
     updateTabu(tabu_list, tabu_stack, tabu_size, s_line_move)
   end
   
-  @show s_ast_vertex
   return s_ast, s_ast_value
 end
 
